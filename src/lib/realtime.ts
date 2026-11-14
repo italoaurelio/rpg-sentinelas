@@ -1,19 +1,26 @@
 import mqtt, { type MqttClient } from 'mqtt';
 import type { ChoiceKey, EpilogueTier, PublicChapter } from '../data/story';
+import type { AvatarConfig } from './avatar';
 
-export type GamePhase = 'LOBBY' | 'READING' | 'VOTING' | 'REVEAL' | 'EPILOGUE' | 'PODIUM';
+export type GamePhase =
+  | 'LOBBY'
+  | 'READING'
+  | 'VOTING'
+  | 'REVEAL'
+  | 'LEADERBOARD'
+  | 'EPILOGUE'
+  | 'PODIUM';
 
 export interface RevealPayload {
   chapterId: number;
   catholicRef: string;
-  countA: number;
-  countB: number;
-  optionAOutcome: string;
-  optionBOutcome: string;
+  counts: Record<ChoiceKey, number>;
+  outcomes: Record<ChoiceKey, string>;
 }
 
 export interface PlayerPublicSnapshot {
   name: string;
+  avatar: AvatarConfig;
   score: number;
   lastChapterId?: number;
   lastChoice?: ChoiceKey;
@@ -23,6 +30,14 @@ export interface PlayerPublicSnapshot {
   epilogueId?: EpilogueTier['id'];
 }
 
+export interface LeaderboardEntry {
+  id: string;
+  name: string;
+  avatar: AvatarConfig;
+  score: number;
+  lastDelta?: number;
+}
+
 export interface RoomStateMessage {
   type: 'ROOM_STATE';
   msgId: string;
@@ -30,11 +45,13 @@ export interface RoomStateMessage {
   phase: GamePhase;
   chapterIndex: number;
   totalChapters: number;
+  votingDurationSec: number;
+  votingEndsAt: number | null;
   publicChapter: PublicChapter | null;
   reveal: RevealPayload | null;
   epilogueNarration: string | null;
   playerStates: Record<string, PlayerPublicSnapshot>;
-  leaderboard: Array<{ id: string; name: string; score: number }>;
+  leaderboard: LeaderboardEntry[];
   updatedAt: number;
 }
 
@@ -44,6 +61,7 @@ export type PlayerToHostMessage =
       msgId: string;
       playerId: string;
       name: string;
+      avatar: AvatarConfig;
       joinedAt: number;
     }
   | {
@@ -77,10 +95,6 @@ export interface PlayerChannel {
   close: () => void;
 }
 
-/**
- * Canal do Mestre (Notebook/Telão):
- * Escuta ações dos celulares e publica o estado da sala via MQTT (WSS) + BroadcastChannel.
- */
 export function createHostChannel(
   roomCode: string,
   onPlayerMessage: (msg: PlayerToHostMessage) => void,
@@ -150,10 +164,6 @@ export function createHostChannel(
   };
 }
 
-/**
- * Canal do Jogador (Celular):
- * Escuta o estado do Mestre e envia escolha/rolagem sem armazenar lógica viciada no cliente.
- */
 export function createPlayerChannel(
   roomCode: string,
   onRoomState: (state: RoomStateMessage) => void,

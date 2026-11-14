@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHAPTERS } from '../data/story';
+import { randomAvatarConfig, renderAvatarDataUri } from './avatar';
 import {
   calculateRoundPoints,
   generateRoomCode,
@@ -11,66 +12,88 @@ import {
 } from './gameEngine';
 
 describe('Story integrity', () => {
-  it('has 16 sequential chapters with one world and one god option each', () => {
+  it('has 16 sequential chapters with 4 distinct options (A-D) and one of each kind', () => {
     expect(CHAPTERS).toHaveLength(16);
     CHAPTERS.forEach((ch, idx) => {
       expect(ch.id).toBe(idx + 1);
-      expect(ch.options).toHaveLength(2);
+      expect(ch.options).toHaveLength(4);
+      expect(ch.options.map((o) => o.key)).toEqual(['A', 'B', 'C', 'D']);
       const kinds = ch.options.map((o) => o.kind).sort();
-      expect(kinds).toEqual(['god', 'world']);
-      expect(ch.options.map((o) => o.key)).toEqual(['A', 'B']);
+      expect(kinds).toEqual(['god', 'god-bold', 'world', 'world-mild']);
     });
   });
 
-  it('alternates option positions so teens cannot guess by button slot', () => {
-    const aGodCount = CHAPTERS.filter((c) => c.options[0].kind === 'god').length;
-    expect(aGodCount).toBeGreaterThanOrEqual(6);
-    expect(aGodCount).toBeLessThanOrEqual(10);
+  it('alternates god-bold positions so teens cannot guess by button slot', () => {
+    const slots = new Set(CHAPTERS.map((c) => c.options.find((o) => o.kind === 'god-bold')?.key));
+    expect(slots.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('uses Nossa Senhora do Rosário as the parish reference', () => {
+    const text = CHAPTERS.map((c) => `${c.title} ${c.narration} ${c.catholicRef}`).join(' ');
+    expect(text).toContain('Nossa Senhora do Rosário');
   });
 });
 
 describe('Biased dice engine', () => {
-  it('forces world choices to roll 1..3 and never 4..6', () => {
-    const rolls = [0, 0.25, 0.49, 0.5, 0.84, 0.85, 0.99].map((r) =>
+  it('forces world and world-mild choices to roll 1..3 and never 4..6', () => {
+    const worldRolls = [0, 0.49, 0.5, 0.84, 0.85, 0.99].map((r) =>
       rollBiasedDie('world', () => r),
     );
-    expect(rolls).toEqual([1, 1, 1, 2, 2, 3, 3]);
-    rolls.forEach((v) => expect(v).toBeLessThanOrEqual(3));
+    expect(worldRolls).toEqual([1, 1, 2, 2, 3, 3]);
+
+    const mildRolls = [0, 0.24, 0.25, 0.69, 0.7, 0.99].map((r) =>
+      rollBiasedDie('world-mild', () => r),
+    );
+    expect(mildRolls).toEqual([1, 1, 2, 2, 3, 3]);
   });
 
-  it('forces god choices to roll 3..6 and never 1..2', () => {
-    const rolls = [0, 0.09, 0.1, 0.39, 0.4, 0.74, 0.75, 0.99].map((r) =>
+  it('forces god and god-bold choices to roll 3..6 and never 1..2', () => {
+    const godRolls = [0, 0.14, 0.15, 0.54, 0.55, 0.84, 0.85, 0.99].map((r) =>
       rollBiasedDie('god', () => r),
     );
-    expect(rolls).toEqual([3, 3, 4, 4, 5, 5, 6, 6]);
-    rolls.forEach((v) => expect(v).toBeGreaterThanOrEqual(3));
+    expect(godRolls).toEqual([3, 3, 4, 4, 5, 5, 6, 6]);
+
+    const boldRolls = [0, 0.04, 0.05, 0.29, 0.3, 0.64, 0.65, 0.99].map((r) =>
+      rollBiasedDie('god-bold', () => r),
+    );
+    expect(boldRolls).toEqual([3, 3, 4, 4, 5, 5, 6, 6]);
   });
 });
 
-describe('Scoring, sanitization, and epilogue', () => {
-  it('computes net round points with die multiplier impact', () => {
+describe('Scoring, avatar, sanitization, and epilogue', () => {
+  it('computes net round points across all 4 tiers', () => {
     const ch = CHAPTERS[0];
     const worldOpt = ch.options.find((o) => o.kind === 'world')!;
+    const mildOpt = ch.options.find((o) => o.kind === 'world-mild')!;
     const godOpt = ch.options.find((o) => o.kind === 'god')!;
+    const boldOpt = ch.options.find((o) => o.kind === 'god-bold')!;
 
-    expect(calculateRoundPoints(worldOpt, 1)).toBeLessThan(calculateRoundPoints(worldOpt, 3));
-    expect(calculateRoundPoints(godOpt, 6)).toBeGreaterThan(calculateRoundPoints(godOpt, 4));
-    expect(calculateRoundPoints(godOpt, 4)).toBeGreaterThan(0);
-    expect(calculateRoundPoints(worldOpt, 2)).toBeLessThan(0);
+    expect(calculateRoundPoints(worldOpt, 1)).toBeLessThan(calculateRoundPoints(mildOpt, 2));
+    expect(calculateRoundPoints(boldOpt, 5)).toBeGreaterThan(calculateRoundPoints(godOpt, 4));
   });
 
   it('strips secret kind and outcome text before sending to phones', () => {
     const sanitized = sanitizeChapterForPlayer(CHAPTERS[0]);
-    expect(sanitized.options[0]).not.toHaveProperty('kind');
-    expect(sanitized.options[0]).not.toHaveProperty('outcomeText');
-    expect(sanitized.options[0]).not.toHaveProperty('basePoints');
+    expect(sanitized.options).toHaveLength(4);
+    sanitized.options.forEach((opt) => {
+      expect(opt).not.toHaveProperty('kind');
+      expect(opt).not.toHaveProperty('outcomeText');
+      expect(opt).not.toHaveProperty('basePoints');
+    });
+  });
+
+  it('generates deterministic SVG data URIs for custom avatars', () => {
+    const cfg = randomAvatarConfig(() => 0.35);
+    const uri = renderAvatarDataUri(cfg);
+    expect(uri.startsWith('data:image/svg+xml')).toBe(true);
   });
 
   it('sorts leaderboard descending by score then connection time', () => {
+    const av = randomAvatarConfig(() => 0.2);
     const players: PlayerRecord[] = [
-      { id: '1', name: 'Ana', score: 120, connectedAt: 20, rounds: {} },
-      { id: '2', name: 'Pedro', score: 300, connectedAt: 30, rounds: {} },
-      { id: '3', name: 'Lucas', score: 300, connectedAt: 10, rounds: {} },
+      { id: '1', name: 'Ana', avatar: av, score: 120, connectedAt: 20, rounds: {} },
+      { id: '2', name: 'Pedro', avatar: av, score: 300, connectedAt: 30, rounds: {} },
+      { id: '3', name: 'Lucas', avatar: av, score: 300, connectedAt: 10, rounds: {} },
     ];
     expect(sortLeaderboard(players).map((p) => p.name)).toEqual(['Lucas', 'Pedro', 'Ana']);
   });

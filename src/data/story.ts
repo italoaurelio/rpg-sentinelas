@@ -1,5 +1,5 @@
-export type OptionKind = 'world' | 'god';
-export type ChoiceKey = 'A' | 'B';
+export type OptionKind = 'world' | 'world-mild' | 'god' | 'god-bold';
+export type ChoiceKey = 'A' | 'B' | 'C' | 'D';
 
 export interface StoryOption {
   key: ChoiceKey;
@@ -16,7 +16,7 @@ export interface Chapter {
   title: string;
   narration: string;
   catholicRef: string;
-  options: [StoryOption, StoryOption];
+  options: [StoryOption, StoryOption, StoryOption, StoryOption];
 }
 
 export interface PublicOption {
@@ -30,7 +30,7 @@ export interface PublicChapter {
   ageLabel: string;
   title: string;
   narration: string;
-  options: [PublicOption, PublicOption];
+  options: [PublicOption, PublicOption, PublicOption, PublicOption];
 }
 
 export interface EpilogueTier {
@@ -41,7 +41,7 @@ export interface EpilogueTier {
 }
 
 export const EPILOGUE_NARRATION =
-  'Os anos passaram depressa. De cabelos brancos, você caminha devagar pela Praça Santa Rita ouvindo a água do Rio Pomba correr debaixo da ponte e o sino do Santuário tocar para a Missa da tarde. A vida inteira passou como um sopro — do simulado do Enem até aqui. Na hora do balanço final, cada pequena escolha mostrou quem você se tornou.';
+  'Os anos passaram depressa. De cabelos brancos, você caminha devagar pelas ruas de Cataguases ouvindo a água do Rio Pomba correr e o sino da Igreja Nossa Senhora do Rosário tocar para a Missa da tarde. A vida inteira passou como um sopro — do simulado do Enem até aqui. Na hora do balanço final, cada pequena escolha mostrou quem você se tornou.';
 
 export const EPILOGUE_TIERS: Record<EpilogueTier['id'], EpilogueTier> = {
   rock: {
@@ -63,7 +63,7 @@ export const EPILOGUE_TIERS: Record<EpilogueTier['id'], EpilogueTier> = {
     title: 'Colheita dos Atalhos',
     reference: 'Mc 8,36',
     description:
-      'Quase sempre escolheu o que parecia mais esperto na hora: a IA pronta, o currículo inflado, o domingo trocado por dinheiro, o conforto solitário. Ganhou aplausos rápidos, mas chegou à beira do rio sentindo que correu para o lugar errado.',
+      'Quase sempre escolheu o que parecia mais esperto ou cômodo na hora: a IA pronta, o currículo inflado, o domingo trocado por dinheiro, a omissão silenciosa. Ganhou aplausos rápidos, mas chegou à beira do rio sentindo que correu para o lugar errado.',
   },
 };
 
@@ -80,18 +80,34 @@ export const CHAPTERS: Chapter[] = [
       {
         key: 'A',
         kind: 'world',
-        label: 'Copiar o texto pronto da IA, entregar em 10 minutos e aproveitar a noite livre.',
+        label: 'Copiar a redação inteira da IA, entregar em 5 minutos e jogar até de madrugada.',
         outcomeText:
           'Na hora foi um alívio e até tirou 9,5 no dever. Mas no sábado de manhã, sem celular no simulado, sua cabeça travou na folha em branco.',
-        basePoints: -12,
+        basePoints: -14,
       },
       {
         key: 'B',
         kind: 'god',
-        label: 'Usar a IA só para revisar gramática e escrever a própria redação até tarde.',
+        label: 'Usar a IA apenas para tirar dúvidas de gramática e escrever seu próprio texto até 23h30.',
         outcomeText:
-          'Foi dormir quase 1h da manhã e tirou só 7,5 na escola. Mas no simulado de sábado sua mente estava afiada e escreveu com segurança.',
-        basePoints: 20,
+          'Dormiu tarde e tirou só 7,5 na escola. Mas no simulado de sábado sua mente estava treinada e escreveu com firmeza.',
+        basePoints: 18,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Pegar a estrutura pronta da IA, trocar algumas frases correndo e ir dormir cedo.',
+        outcomeText:
+          'Descansou bem, mas não treinou repertório de verdade e travou na metade da prova discursiva.',
+        basePoints: -6,
+      },
+      {
+        key: 'D',
+        kind: 'god-bold',
+        label: 'Escrever do zero sem muleta de IA, rezar pedindo clareza e ainda ajudar Dona Marlene a arrumar a sala.',
+        outcomeText:
+          'Deu muito sono no fim da noite e a nota da escola foi comum, mas você saiu leve, treinado e com a mãe sorrindo de gratidão.',
+        basePoints: 24,
       },
     ],
   },
@@ -99,26 +115,42 @@ export const CHAPTERS: Chapter[] = [
     id: 2,
     act: 'Ato I — Barro e Prova',
     ageLabel: '17 anos • Domingo de manhã',
-    title: 'O Sino das Nove',
+    title: 'O Sino da Rosário',
     narration:
-      'O simulado de sábado deixou o corpo moído. Às 8h45 de domingo, o sino do Santuário Santa Rita bateu para a Missa e a Helena lembrou do grupo de jovens à tarde. No mesmo minuto, o grupo da sala ferveu: Gabriel comprou energético e chamou para um "intensivão de matemática o domingo inteiro" na casa dele.',
+      'O simulado de sábado deixou o corpo moído. Às 8h45 de domingo, o sino da Igreja Nossa Senhora do Rosário bateu para a Missa e a Helena lembrou do grupo de jovens à tarde. No mesmo minuto, o grupo da sala ferveu: Gabriel comprou energético e chamou para um "intensivão de matemática o domingo inteiro" na casa dele.',
     catholicRef: 'Mt 6,33 • São Carlo Acutis ("A Eucaristia é a nossa rodovia para o Céu")',
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Ir à Missa das 9h, participar do grupo e estudar focado por 3h no fim da tarde.',
+        kind: 'god-bold',
+        label: 'Ir à Missa na Nossa Senhora do Rosário, participar do grupo de jovens e estudar 3h focado no fim da tarde.',
         outcomeText:
-          'Viu menos matéria que a turma e sentiu medo de ficar para trás. Mas saiu da Eucaristia sereno e rendeu o dobro nas três horas de estudo.',
-        basePoints: 20,
+          'Viu menos matéria que a turma e sentiu medo de ficar para trás. Mas saiu da Eucaristia sereno e rendeu o dobro nas três horas.',
+        basePoints: 24,
       },
       {
         key: 'B',
+        kind: 'world-mild',
+        label: 'Ficar em casa no celular de manhã dizendo que "vai estudar sozinho", mas passar o dia enrolando.',
+        outcomeText:
+          'Evitou o cansaço do intensivão, mas não foi à Missa nem estudou direito — terminou o domingo culpado.',
+        basePoints: -8,
+      },
+      {
+        key: 'C',
+        kind: 'god',
+        label: 'Ir à Missa das 9h para entregar a semana a Deus e estudar em silêncio no resto do dia.',
+        outcomeText:
+          'Sentiu falta da resenha com os amigos no grupo, mas a oração ordenou sua semana e manteve sua paz.',
+        basePoints: 18,
+      },
+      {
+        key: 'D',
         kind: 'world',
         label: 'Pular Missa e grupo: "Semana de Enem Deus entende, hoje o foco é 100% nota."',
         outcomeText:
-          'Resolveu 30 questões a mais no papel, mas voltou para casa exausto de energético, ansioso e acabou discutindo feio com Dona Marlene.',
-        basePoints: -12,
+          'Resolveu 30 questões a mais no papel, mas voltou exausto de energético, ansioso e discutiu feio com Dona Marlene.',
+        basePoints: -14,
       },
     ],
   },
@@ -133,19 +165,35 @@ export const CHAPTERS: Chapter[] = [
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Parar 5 minutos, ajudá-la a sentar na sombra e avisar o mercadinho antes de correr.',
+        kind: 'world-mild',
+        label: 'Gritar de longe "alguém ajuda aqui!" sem diminuir o passo para não perder tempo.',
         outcomeText:
-          'Entrou pelo portão faltando 30 segundos, ensopado de suor e sem fôlego. Mas sentou com o coração inteiro em paz e fez a melhor prova do ano.',
-        basePoints: 24,
+          'Entrou na escola sem atraso, mas o resto da tarde ficou pensando se alguém realmente parou para socorrê-la.',
+        basePoints: -8,
       },
       {
         key: 'B',
-        kind: 'world',
-        label: 'Fingir que não viu e correr direto para garantir o horário com folga.',
+        kind: 'god-bold',
+        label: 'Parar 5 minutos, levantá-la com cuidado até a sombra e avisar a família no mercadinho antes de disparar.',
         outcomeText:
-          'Chegou 15 minutos antes de fechar. Porém, na primeira hora de prova, a imagem da senhora no chão não saiu da cabeça e você leu o texto três vezes sem foco.',
-        basePoints: -14,
+          'Cruzou o portão faltando 30 segundos, ensopado de suor e sem fôlego. Mas sentou com a alma inteira e fez a melhor prova do ano.',
+        basePoints: 26,
+      },
+      {
+        key: 'C',
+        kind: 'world',
+        label: 'Fingir que não viu e correr para garantir lugar confortável e banheiro antes da prova.',
+        outcomeText:
+          'Chegou 15 minutos antes. Porém, na primeira hora, a imagem da senhora no chão não saía da cabeça e você errou questões fáceis.',
+        basePoints: -15,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Parar rápido para chamar o dono da padaria da esquina e garantir que ela fosse atendida antes de correr.',
+        outcomeText:
+          'Chegou quase no limite do portão e cansado, mas tranquilo por não deixá-la desamparada.',
+        basePoints: 18,
       },
     ],
   },
@@ -161,18 +209,34 @@ export const CHAPTERS: Chapter[] = [
       {
         key: 'A',
         kind: 'world',
-        label: 'Sentir vergonha da vaga local, largar tudo e ficar em casa tentando parecer vencedor.',
+        label: 'Sentir vergonha da vaga local, largar tudo e passar os dias se comparando com o Instagram.',
         outcomeText:
-          'Evitou pegar circular às seis da manhã, mas passou meses trancado no quarto se comparando com stories perfeitos e afundando em tristeza.',
-        basePoints: -15,
+          'Evitou pegar circular às 6h da manhã, mas ficou meses trancado no quarto tentando copiar a vida editada das telas.',
+        basePoints: -16,
       },
       {
         key: 'B',
-        kind: 'god',
-        label: 'Assumir a matrícula no IF da região com gratidão e cortar o excesso de telas.',
+        kind: 'world-mild',
+        label: 'Matricular por obrigação, mas viver reclamando do curso e sem se dedicar às aulas.',
         outcomeText:
-          'Doeu no orgulho ver colegas viajando enquanto você pegava ônibus todo dia, mas logo descobriu ótimos professores e um propósito real.',
-        basePoints: 24,
+          'Não perdeu o ano todo, porém desperdiçou oportunidades por desprezar o lugar onde Deus o colocou.',
+        basePoints: -8,
+      },
+      {
+        key: 'C',
+        kind: 'god-bold',
+        label: 'Assumir a matrícula no IF com gratidão, cortar o excesso de redes sociais e ajudar em casa no contraturno.',
+        outcomeText:
+          'Doeu no orgulho ver colegas viajando enquanto você pegava ônibus todo dia, mas descobriu professores incríveis e um propósito real.',
+        basePoints: 26,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Aceitar o curso da região com calma, mesmo sem contar para todo mundo por enquanto.',
+        outcomeText:
+          'Levou algumas semanas para vencer a frustração inicial, mas aos poucos pegou gosto pelos estudos.',
+        basePoints: 18,
       },
     ],
   },
@@ -180,26 +244,42 @@ export const CHAPTERS: Chapter[] = [
     id: 5,
     act: 'Ato I — Barro e Prova',
     ageLabel: '19 anos • Sexta chuvosa',
-    title: 'A Chuva na Praça Santa Rita',
+    title: 'A Chuva no Centro',
     narration:
-      'No segundo semestre do curso, o dinheiro vivia contado. Sexta à noite chovia forte no centro de Cataguases e você estava com os últimos R$ 35 no bolso para lanchar com a turma na Praça Santa Rita. Na marquise da farmácia, reconheceu Seu Antônio — o vizinho idoso que morava sozinho — encharcado, equilibrando um saco de arroz e remédios.',
+      'No segundo semestre do curso, o dinheiro vivia contado. Sexta à noite chovia forte no centro de Cataguases e você estava com os últimos R$ 35 no bolso para lanchar com a turma perto da Nossa Senhora do Rosário. Na marquise da farmácia, reconheceu Seu Antônio — o vizinho idoso que morava sozinho — encharcado, equilibrando um saco de arroz e remédios.',
     catholicRef: 'São Pier Giorgio Frassati (Caridade discreta • "Verso l\'alto!")',
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Pagar um carro com seus R$ 35, subir as escadas com ele e voltar a pé na chuva.',
+        kind: 'god-bold',
+        label: 'Pagar um carro com seus R$ 35, subir as escadas com ele e voltar a pé na chuva sem postar nada.',
         outcomeText:
-          'Chegou em casa molhado, sem dinheiro para o fim de semana e jantou pão com ovo. Mas dormiu com uma alegria silenciosa que não passava.',
-        basePoints: 26,
+          'Chegou molhado, sem dinheiro para o fim de semana e jantou pão com ovo. Mas dormiu com uma alegria silenciosa que não passava.',
+        basePoints: 28,
       },
       {
         key: 'B',
-        kind: 'world',
-        label: 'Atravessar para a outra calçada para não perder o lanche nem atrasar para o rolê.',
+        kind: 'world-mild',
+        label: 'Ajudar a ajeitar a sacola na marquise por 30 segundos e correr pro lanche com os amigos.',
         outcomeText:
-          'Chegou sequinho e riu com a galera na lanchonete. Mas a cada trovão lembrava de Seu Antônio subindo a ladeira sozinho, e a noite perdeu a graça.',
-        basePoints: -14,
+          'Não virou totalmente as costas, mas o vento frio lá fora lembrou a noite inteira que você podia ter feito muito mais.',
+        basePoints: -6,
+      },
+      {
+        key: 'C',
+        kind: 'god',
+        label: 'Dividir seu guarda-chuva até a esquina dele e ir ao lanche com metade do dinheiro contado.',
+        outcomeText:
+          'Chegou atrasado no encontro e gastou menos com você, mas voltou em paz por não deixá-lo sozinho.',
+        basePoints: 20,
+      },
+      {
+        key: 'D',
+        kind: 'world',
+        label: 'Atravessar para a outra calçada para não sujar o tênis nem perder o rolê.',
+        outcomeText:
+          'Chegou sequinho e riu com a galera, mas a cada trovão lembrava de Seu Antônio na ladeira e o sabor da noite azedou.',
+        basePoints: -15,
       },
     ],
   },
@@ -215,17 +295,33 @@ export const CHAPTERS: Chapter[] = [
       {
         key: 'A',
         kind: 'world',
-        label: 'Dar uma "turbinada" no currículo para não perder a vaga para quem faz igual.',
+        label: 'Colocar Excel avançado e inglês fluente para impressionar e ganhar do concorrente.',
         outcomeText:
-          'Cláudio sorriu na entrevista e elogiou seu perfil. Mas na segunda semana pediu uma planilha complexa, você travou e viveu meses com medo de ser desmascarado.',
+          'Cláudio sorriu na entrevista e elogiou seu perfil. Mas na segunda semana pediu uma planilha complexa, você travou e viveu meses com medo.',
         basePoints: -16,
       },
       {
         key: 'B',
         kind: 'god',
-        label: 'Dizer exatamente o que sabe e se comprometer a estudar à noite o que falta.',
+        label: 'Dizer exatamente o que sabe sem aumentar nada e mostrar disposição para aprender.',
         outcomeText:
-          'Perdeu a vaga principal na hora e entrou num cargo auxiliar ganhando menos. Meses depois, Cláudio promoveu você justamente pela sinceridade.',
+          'Sentiu insegurança perto dos currículos enfeitados, mas dormiu tranquilo e ganhou respeito pela clareza.',
+        basePoints: 18,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Deixar um termo vago tipo "conhecimento sólido" para parecer mais do que realmente sabe.',
+        outcomeText:
+          'Passou na triagem, mas logo descobriu a dor de cabeça de sustentar uma imagem que não era real.',
+        basePoints: -8,
+      },
+      {
+        key: 'D',
+        kind: 'god-bold',
+        label: 'Assumir o nível básico com transparência e levar um plano pronto de curso noturno para dominar tudo no mês.',
+        outcomeText:
+          'Perdeu a vaga principal na hora e começou como auxiliar ganhando menos. Meses depois, Cláudio promoveu você justamente pela verdade.',
         basePoints: 26,
       },
     ],
@@ -241,19 +337,35 @@ export const CHAPTERS: Chapter[] = [
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Bater na porta do Cláudio, assumir o erro na hora e ficar até 19h corrigindo.',
+        kind: 'god-bold',
+        label: 'Bater na porta do Cláudio, assumir o erro na hora e ficar até 19h corrigindo tudo pessoalmente.',
         outcomeText:
           'Levou uma bronca séria e perdeu o compromisso da sexta à noite. Mas a partir daquele dia Cláudio passou a confiar em você de olhos fechados.',
-        basePoints: 26,
+        basePoints: 28,
       },
       {
         key: 'B',
         kind: 'world',
-        label: 'Ficar quieto e deixar parecer falha do sistema ou do novato na segunda.',
+        label: 'Ficar quieto e deixar a culpa cair naturalmente no login do estagiário na segunda.',
         outcomeText:
-          'Saiu no horário tranquilo na sexta. Na segunda, o estagiário levou culpa injusta na frente da sala e o clima no trabalho apodreceu.',
-        basePoints: -16,
+          'Saiu no horário tranquilo na sexta. Na segunda, o novato levou advertência injusta na frente da sala e o clima apodreceu.',
+        basePoints: -18,
+      },
+      {
+        key: 'C',
+        kind: 'god',
+        label: 'Corrigir o código sozinho em silêncio na hora e mandar mensagem avisando o Cláudio do ocorrido.',
+        outcomeText:
+          'Deu trabalho extra na sexta, mas evitou prejuízo para a empresa e protegeu o estagiário.',
+        basePoints: 20,
+      },
+      {
+        key: 'D',
+        kind: 'world-mild',
+        label: 'Apagar rápido e inventar na segunda que foi "instabilidade do sistema" sem acusar ninguém.',
+        outcomeText:
+          'Ninguém foi punido, mas você passou o fim de semana tenso com medo da auditoria do sistema.',
+        basePoints: -8,
       },
     ],
   },
@@ -263,24 +375,40 @@ export const CHAPTERS: Chapter[] = [
     ageLabel: '22 anos • Ritmo adulto',
     title: 'O Projeto de Todos os Domingos',
     narration:
-      'Por causa dessa confiança, Cláudio ofereceu a você a coordenação de um projeto com 40% a mais de salário. Dona Marlene sorriu animada com o alívio nas contas. O detalhe: por oito meses você teria de trabalhar quase todos os sábados e domingos inteiros — zerando Missa em Santa Rita e tempo em casa.',
+      'Por causa dessa confiança, Cláudio ofereceu a você a coordenação de um projeto com 40% a mais de salário. Dona Marlene sorriu animada com o alívio nas contas. O detalhe: por oito meses você teria de trabalhar quase todos os sábados e domingos inteiros — zerando Missa na Nossa Senhora do Rosário e tempo em casa.',
     catholicRef: 'Mc 8,36 ("De que adianta ganhar o mundo inteiro...") • São Carlo Acutis',
     options: [
       {
         key: 'A',
-        kind: 'world',
-        label: 'Aceitar sem negociar: "Agora é fase de juntar dinheiro; depois eu volto pra Igreja."',
+        kind: 'world-mild',
+        label: 'Aceitar metade dos domingos sem combinar horário de Missa, "indo só quando der folga".',
         outcomeText:
-          'A conta bancária subiu rápido e comprou o que queria. Mas sem domingo e sem Eucaristia, vieram a insônia e uma impaciência dura com todos em casa.',
-        basePoints: -16,
+          'Ganhou um extra bom, mas foi ficando três ou quatro domingos seguidos longe da Eucaristia sem perceber.',
+        basePoints: -8,
       },
       {
         key: 'B',
-        kind: 'god',
-        label: 'Propor dividir a escala com um colega para ganhar menos bônus e preservar o domingo.',
+        kind: 'world',
+        label: 'Aceitar tudo sem negociar: "Agora é hora de juntar dinheiro; depois eu volto pra Igreja."',
         outcomeText:
-          'Recebeu só metade do adicional possível e precisou segurar gastos. Mas manteve a alma viva na Missa de Santa Rita e atravessou o ano inteiro em paz.',
+          'A conta bancária subiu rápido e comprou o que queria. Mas sem domingo e sem oração vieram a insônia e grosseria em casa.',
+        basePoints: -18,
+      },
+      {
+        key: 'C',
+        kind: 'god-bold',
+        label: 'Propor dividir a escala com um colega para ganhar menos bônus, mas blindar o domingo em família e na Rosário.',
+        outcomeText:
+          'Recebeu só metade do adicional possível e segurou gastos. Mas manteve a alma viva na Eucaristia e atravessou o ano inteiro em paz.',
         basePoints: 28,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Recusar o cargo de chefia para manter a rotina atual, mesmo perdendo a chance de ganhar mais.',
+        outcomeText:
+          'O orçamento continuou apertado em casa, mas sua vida espiritual e os laços familiares permaneceram de pé.',
+        basePoints: 18,
       },
     ],
   },
@@ -290,24 +418,40 @@ export const CHAPTERS: Chapter[] = [
     ageLabel: '24 anos • Saída da Missa',
     title: 'O Convite da Helena',
     narration:
-      'Num domingo de manhã na escadaria do Santuário, Helena segurou você preocupada: "A turma de adolescentes lá do bairro de cima vai fechar por falta de gente mais velha para acompanhar. Os meninos estão afundando em apostas e solidão. Você topa assumir uma noite por semana?" Você já trabalhava o dia todo e estava moído.',
+      'Num domingo de manhã na saída da Igreja Nossa Senhora do Rosário, Helena segurou você preocupada: "A turma de adolescentes do grupo vai fechar por falta de gente mais velha para acompanhar. Os meninos estão afundando em apostas e solidão. Você topa assumir uma noite por semana?" Você já trabalhava o dia todo e estava moído.',
     catholicRef: '1Pd 4,10 • São Pier Giorgio Frassati',
     options: [
       {
         key: 'A',
         kind: 'world',
-        label: 'Recusar educadamente para guardar suas noites de sofá, séries e descanso.',
+        label: 'Recusar na hora dizendo que está sem tempo, para guardar todas as noites de descanso e séries.',
         outcomeText:
-          'Teve semanas bem confortáveis no quarto. Meses depois soube que o grupo fechou e sentiu sua própria fé esfriar até virar rotina vazia.',
-        basePoints: -15,
+          'Teve noites bem confortáveis no sofá. Meses depois soube que o grupo fechou e sentiu sua própria fé esfriar até virar costume.',
+        basePoints: -16,
       },
       {
         key: 'B',
-        kind: 'god',
-        label: 'Topar por um semestre toda quinta à noite, mesmo apertando as horas de sono.',
+        kind: 'god-bold',
+        label: 'Topar acompanhar por um semestre toda quinta à noite, mesmo apertando suas horas de sono.',
         outcomeText:
-          'Teve quinta que você quase dormiu de pé depois do trabalho. Mas ver um garoto de 15 anos mudar de rumo porque alguém o escutou renovou sua esperança.',
+          'Teve quinta que você quase dormiu de pé depois do trabalho. Mas ver um garoto de 15 anos mudar de rumo porque foi escutado renovou sua vida.',
         basePoints: 28,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Prometer ajudar "só nos dias que estiver tranquilo", mas sempre dar desculpa em cima da hora.',
+        outcomeText:
+          'Evitou desgaste, mas a turma sentiu falta de compromisso real e parou de contar com você.',
+        basePoints: -8,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Assumir apoio quinzenal com outros dois jovens para dividir o peso com responsabilidade.',
+        outcomeText:
+          'Deu trabalho encaixar na agenda corrida, mas manteve o grupo vivo e criou amizades verdadeiras na paróquia.',
+        basePoints: 20,
       },
     ],
   },
@@ -317,24 +461,40 @@ export const CHAPTERS: Chapter[] = [
     ageLabel: '25 anos • Centro de Cataguases',
     title: 'O Reencontro na Padaria',
     narration:
-      'Meses depois, comprando pão antes do serviço no centro, um rapaz parou olhando para o seu crachá: "Você não é vizinho do Seu Antônio da rua de cima? Eu sou o Marcos, filho dele!" Marcos tinha aberto uma pequena empresa de tecnologia e gestão na Zona da Mata e chamou você para um café para conversar sobre trabalhar junto.',
+      'Meses depois, comprando pão antes do serviço no centro, um rapaz parou olhando para o seu crachá: "Você não é vizinho do Seu Antônio da rua de cima? Eu sou o Marcos, filho dele!" Marcos tinha aberto uma pequena empresa de tecnologia e gestão na Zona da Mata e chamou você para um café para falar sobre trabalhar junto.',
     catholicRef: 'Pr 11,25 ("Quem faz o bem será recompensado")',
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Conversar com simplicidade, mostrar trabalho real e reconhecer suas limitações.',
+        kind: 'god-bold',
+        label: 'Conversar com simplicidade, reconhecer suas falhas e construir uma proposta honesta a longo prazo.',
         outcomeText:
           'Não veio salário milionário no primeiro mês, mas nasceu uma parceria limpa, leal e cheia de frutos para o futuro.',
         basePoints: 30,
       },
       {
         key: 'B',
-        kind: 'world',
-        label: 'Tentar impressionar Marcos inventando feitos e falando mal do chefe atual.',
+        kind: 'world-mild',
+        label: 'Esconder suas dificuldades e prometer prazos irreais só para fechar contrato rápido.',
         outcomeText:
-          'Falou bonito por vinte minutos no café, mas Marcos percebeu a falta de lealdade quando checou referências e nunca mais retornou a ligação.',
+          'Assinou logo, mas passou meses estressado tentando cumprir o que não conseguia entregar.',
+        basePoints: -8,
+      },
+      {
+        key: 'C',
+        kind: 'world',
+        label: 'Tentar impressionar Marcos inventando cargos e falando mal da empresa onde você trabalha hoje.',
+        outcomeText:
+          'Falou bonito por vinte minutos no café, mas Marcos percebeu a falta de lealdade ao checar referências e nunca mais ligou.',
         basePoints: -16,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Agradecer pela lembrança, indicar outros colegas também e manter portas abertas com humildade.',
+        outcomeText:
+          'Dividiu o espaço sem egoísmo, fortalecendo sua reputação na cidade.',
+        basePoints: 20,
       },
     ],
   },
@@ -344,21 +504,37 @@ export const CHAPTERS: Chapter[] = [
     ageLabel: '27 anos • Projeto de vida',
     title: 'O Namoro que Dividia a Alma',
     narration:
-      'Aos 27 anos, você começou a namorar uma pessoa carismática e admirada na cidade. No início parecia filme, mas logo veio o atrito: fazia piada toda vez que você ia ao Santuário, implicava com suas amizades da igreja e dizia que "quem quer crescer em Cataguases não pode perder tempo com coisa de paróquia".',
+      'Aos 27 anos, você começou a namorar uma pessoa carismática e admirada na cidade. No início parecia filme, mas logo veio o atrito: fazia piada toda vez que você ia à Nossa Senhora do Rosário, implicava com suas amizades da igreja e dizia que "quem quer crescer em Cataguases não pode perder tempo com coisa de paróquia".',
     catholicRef: 'Mt 7,24-27 (Casa sobre a rocha vs. areia)',
     options: [
       {
         key: 'A',
         kind: 'world',
-        label: 'Ir cedendo por medo de ficar sozinho aos 27 anos: "Depois que casar melhora."',
+        label: 'Ir cedendo em tudo por medo de ficar sozinho perto dos 30: "Depois que casar melhora."',
         outcomeText:
-          'Evitou brigas e ganhou fotos bonitas de status. Mas foi apagando sua fé aos poucos até não reconhecer quem você era no espelho.',
+          'Evitou brigas e ganhou fotos bonitas de status. Mas foi apagando sua fé até não reconhecer quem você era no espelho.',
         basePoints: -18,
       },
       {
         key: 'B',
         kind: 'god',
-        label: 'Conversar com verdade sobre o que é inegociável e aceitar o término se os rumos forem opostos.',
+        label: 'Marcar limites claros sobre sua fé e buscar orientação espiritual antes de decidir.',
+        outcomeText:
+          'As conversas foram difíceis e tensas, mas trouxeram clareza para não construir um relacionamento sobre ilusão.',
+        basePoints: 20,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Começar a ir à Missa escondido e evitar tocar no assunto de Deus para "manter a paz".',
+        outcomeText:
+          'A calma aparente durou pouco e virou um cansaço constante de viver uma vida dupla.',
+        basePoints: -10,
+      },
+      {
+        key: 'D',
+        kind: 'god-bold',
+        label: 'Conversar com verdade sobre o que é inegociável e aceitar o término ao ver que os rumos eram opostos.',
         outcomeText:
           'Doeu fundo; enfrentou meses de silêncio e saudade difícil. Mas preservou sua alma inteira e construiu terreno firme na rocha.',
         basePoints: 28,
@@ -376,19 +552,35 @@ export const CHAPTERS: Chapter[] = [
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Escrever no grupo que o áudio está cortado e pedir que ouçam Renato antes de julgar.',
+        kind: 'god-bold',
+        label: 'Escrever no grupo que o áudio está cortado e defender em voz alta que ouçam Renato antes de julgar.',
         outcomeText:
-          'Ganhou fama de "chato" por algumas semanas e disputou a vaga no voto apertado. Mas dormiu com a consciência livre e ganhou respeito silencioso.',
+          'Ganhou fama de "chato" por algumas semanas e disputou a vaga no voto apertado. Mas dormiu com a consciência livre e ganhou respeito.',
         basePoints: 28,
       },
       {
         key: 'B',
         kind: 'world',
-        label: 'Ficar calado e deixar a fofoca derrubar seu concorrente sozinho.',
+        label: 'Dar uma risada no grupo e encaminhar no privado para acelerar a queda do concorrente.',
         outcomeText:
-          'Renato foi afastado e o caminho ficou livre. Mas cada vez que entrava naquela sala sentia peso na consciência e medo de ser o próximo alvo.',
-        basePoints: -16,
+          'Renato foi afastado e a vaga ficou fácil. Mas cada vez que entrava naquela sala sentia nojo da própria atitude.',
+        basePoints: -18,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Ficar totalmente calado olhando o linchamento para não se queimar com ninguém.',
+        outcomeText:
+          'Ninguém brigou com você, mas a omissão pesou na consciência e criou medo de ser o próximo alvo.',
+        basePoints: -8,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Chamar Renato no particular para avisar do áudio e orientar ele a se defender com a diretoria.',
+        outcomeText:
+          'Não teve aplauso público, mas agiu com justiça e evitou uma demissão injusta.',
+        basePoints: 20,
       },
     ],
   },
@@ -399,22 +591,38 @@ export const CHAPTERS: Chapter[] = [
     title: 'A Demissão e o Esquema Fácil',
     narration:
       'Aos 33 anos uma crise forte atingiu o setor e você entrou num corte de custos bem no mês de contas pesadas. Sem dormir direito, recebeu mensagem do velho colega Gabriel: "Tô num grupo fechado de apostas e renda rápida. Bota metade da tua rescisão comigo que em quinze dias você dobra!"',
-    catholicRef: 'Santa Rita de Cássia (fidelidade nas causas impossíveis) • Pr 16,3',
+    catholicRef: 'Nossa Senhora do Rosário (oração nas horas difíceis) • Pr 16,3',
     options: [
       {
         key: 'A',
         kind: 'world',
-        label: 'Arriscar parte da reserva no esquema "só para sair do sufoco desse mês".',
+        label: 'Arriscar metade da rescisão no esquema para tentar resolver tudo em quinze dias.',
         outcomeText:
-          'Ganhou um troco nos três primeiros dias e achou que tinha achado a saída. Na segunda semana a banca levou quase tudo, deixando dívida e vergonha.',
+          'Ganhou um troco nos três primeiros dias e achou que tinha achado a saída. Na segunda semana a banca levou quase tudo.',
         basePoints: -20,
       },
       {
         key: 'B',
-        kind: 'god',
-        label: 'Bloquear o esquema, rezar no Santuário Santa Rita, cortar gastos e recomeçar com Marcos.',
+        kind: 'world-mild',
+        label: 'Colocar "só um pouquinho pra testar", escondendo de todo mundo em casa.',
         outcomeText:
-          'Passou quatro meses de arroz com feijão bem apertado. Mas atravessou o vale de pé e reconstruiu a renda sem destruir a própria paz.',
+          'Perdeu menos dinheiro, mas entrou no vício da ansiedade olhando o celular de madrugada.',
+        basePoints: -10,
+      },
+      {
+        key: 'C',
+        kind: 'god',
+        label: 'Recusar o esquema, pedir ajuda à família e enviar currículos todo dia sem desespero.',
+        outcomeText:
+          'Demorou semanas difíceis para ajustar os boletos, mas manteve a casa honesta e de pé.',
+        basePoints: 20,
+      },
+      {
+        key: 'D',
+        kind: 'god-bold',
+        label: 'Bloquear o esquema, rezar o terço na Igreja Nossa Senhora do Rosário, cortar luxos e recomeçar com Marcos.',
+        outcomeText:
+          'Passou quatro meses de arroz com feijão bem apertado. Mas atravessou o vale de pé e reconstruiu a renda com paz.',
         basePoints: 32,
       },
     ],
@@ -430,18 +638,34 @@ export const CHAPTERS: Chapter[] = [
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Recusar o acordo informal e apresentar um pacote menor dentro da lei.',
+        kind: 'god-bold',
+        label: 'Recusar o acordo informal e apresentar um pacote mais enxuto 100% dentro da lei.',
         outcomeText:
-          'O cliente fechou com o concorrente e o caixa daquele mês apertou forte. Mas a fama de empresa séria trouxe contratos firmes nos anos seguintes.',
+          'O cliente fechou com o concorrente e o caixa apertou forte. Mas a fama de empresa séria atraiu contratos firmes nos anos seguintes.',
         basePoints: 30,
       },
       {
         key: 'B',
-        kind: 'world',
-        label: 'Aceitar o esquema: "O imposto é alto demais, todo mundo faz isso para sobreviver."',
+        kind: 'world-mild',
+        label: 'Aceitar "só dessa vez" dizendo que o sistema tributário obriga todo mundo a dar jeitinho.',
         outcomeText:
-          'Entrou dinheiro gordo no mês. Meses depois deu problema contratual sem respaldo de nota, o cliente sumiu e sobrou prejuízo jurídico.',
+          'Aliviou o mês, mas abriu brecha para clientes folgados pedirem sempre o mesmo esquema.',
+        basePoints: -10,
+      },
+      {
+        key: 'C',
+        kind: 'god',
+        label: 'Explicar para o cliente que sem nota não há garantia e oferecer parcelamento honesto.',
+        outcomeText:
+          'A negociação foi dura e o lucro menor, mas o contrato saiu limpo.',
+        basePoints: 22,
+      },
+      {
+        key: 'D',
+        kind: 'world',
+        label: 'Fazer tudo por fora e ainda usar o lucro extra sem declarar nada para os sócios.',
+        outcomeText:
+          'Entrou dinheiro rápido, mas meses depois deu problema na fiscalização e quebrou a confiança da parceria.',
         basePoints: -18,
       },
     ],
@@ -460,16 +684,32 @@ export const CHAPTERS: Chapter[] = [
         kind: 'world',
         label: 'Assinar as três demissões na sexta: "É a modernização; se eu não fizer, outro faz."',
         outcomeText:
-          'A planilha brilhou e o bônus caiu na conta. Mas o olhar daqueles três pais de família saindo com a caixa na mão não saiu mais da sua memória.',
+          'A planilha brilhou e o bônus caiu na conta. Mas o olhar daqueles três pais de família saindo com a caixa na mão nunca saiu da sua memória.',
         basePoints: -20,
       },
       {
         key: 'B',
-        kind: 'god',
-        label: 'Abrir mão do bônus e propor treinar os três veteranos para atendimento humano com apoio da IA.',
+        kind: 'god-bold',
+        label: 'Abrir mão do bônus anual e montar plano de 6 meses treinando os três veteranos para atendimento humano com apoio da IA.',
         outcomeText:
-          'Deu o dobro de trabalho ensinar a equipe e seu bônus foi zero naquele ano. Mas salvou três lares em Cataguases e formou uma equipe leal.',
+          'Deu o dobro de trabalho ensinar a equipe e seu bônus foi zero naquele ano. Mas salvou três lares em Cataguases e formou equipe leal.',
         basePoints: 34,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Pedir para o RH assinar as demissões no seu lugar para não parecer o vilão da história.',
+        outcomeText:
+          'Limpou a própria imagem na hora, mas as famílias perderam o sustento do mesmo jeito e a equipe sentiu sua covardia.',
+        basePoints: -12,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Negociar redução de jornada e recolocação interna antes de aceitar qualquer corte.',
+        outcomeText:
+          'Passou semanas tensas defendendo a equipe, mas conseguiu preservar dignidade e respeito.',
+        basePoints: 22,
       },
     ],
   },
@@ -479,24 +719,40 @@ export const CHAPTERS: Chapter[] = [
     ageLabel: '46 → 58 anos • Família',
     title: 'A Presença que Não Cabe no PIX',
     narration:
-      'Os anos seguiram até você chegar à maturidade. Primeiro veio a doença de Dona Marlene, exigindo viagens de tratamento entre Cataguases e Juiz de Fora bem quando ofereceram uma consultoria fora. Depois, já aos 58 anos, um jovem de 17 anos da sua família chegou à sua mesa ansioso com o Enem e preso nas telas dizendo: "Parece que Deus nem liga pros meus planos", enquanto você tinha trabalho atrasado.',
+      'Os anos seguiram até você chegar à maturidade. Primeiro veio a doença de Dona Marlene, exigindo viagens entre Cataguases e Juiz de Fora bem quando ofereceram uma consultoria fora. Depois, aos 58 anos, um jovem de 17 anos da família chegou à sua mesa ansioso com o Enem e preso nas telas dizendo: "Parece que Deus nem liga pros meus planos", enquanto você tinha trabalho atrasado.',
     catholicRef: 'Eclo 3,12-14 • Dt 6,6-7 • São Pier Giorgio Frassati',
     options: [
       {
         key: 'A',
-        kind: 'god',
-        label: 'Ficar por perto na doença da mãe e fechar o notebook hoje para ouvir o jovem com café na mesa.',
+        kind: 'god-bold',
+        label: 'Ficar por perto cuidando de Dona Marlene e fechar o notebook hoje para ouvir o jovem com café na mesa.',
         outcomeText:
-          'Perdeu vitrines profissionais e acordou às 5h da manhã para dar conta do trabalho. Mas viveu o amor mais verdadeiro da sua vida e acendeu luz em outro coração.',
+          'Perdeu vitrines profissionais e acordou às 5h da manhã para terminar entregas. Mas viveu o amor mais verdadeiro da vida e acendeu luz em outro coração.',
         basePoints: 36,
       },
       {
         key: 'B',
         kind: 'world',
-        label: 'Viajar na consultoria pagando tudo à distância e dar só um conselho rápido + PIX ao jovem.',
+        label: 'Viajar na consultoria pagando tudo à distância e mandar só um conselho rápido + PIX ao jovem.',
         outcomeText:
           'O currículo brilhou e as entregas ficaram em dia. Mas descobriu tarde que presença e colo não se transferem por aplicativo.',
         basePoints: -20,
+      },
+      {
+        key: 'C',
+        kind: 'world-mild',
+        label: 'Ajudar só quando sobra brecha na agenda e conversar olhando para o celular ao mesmo tempo.',
+        outcomeText:
+          'Cumpriu as obrigações mínimas, mas deixou passar a chance de estar presente de corpo e alma.',
+        basePoints: -10,
+      },
+      {
+        key: 'D',
+        kind: 'god',
+        label: 'Organizar rodízio honesto com parentes para a mãe e reservar a manhã de sábado para o jovem.',
+        outcomeText:
+          'Apertou a semana inteira, mas manteve os laços vivos e mostrou que Deus caminha nas escolhas reais.',
+        basePoints: 24,
       },
     ],
   },

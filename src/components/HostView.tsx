@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
+  AlertTriangle,
   BookOpen,
   CheckCircle2,
+  Clock,
   Crown,
   Dices,
   ExternalLink,
   RotateCcw,
   Sparkles,
+  Trophy,
   Users,
   Wifi,
   WifiOff,
@@ -33,17 +36,26 @@ import {
   type RevealPayload,
   type RoomStateMessage,
 } from '../lib/realtime';
+import { AvatarView } from './AvatarView';
 
 interface HostViewProps {
   onSwitchToPlayer: (roomCode: string) => void;
 }
 
-const STORAGE_KEY = 'sentinelas_host_session_v1';
+const STORAGE_KEY = 'sentinelas_host_session_v2';
+const TIMER_OPTIONS = [
+  { value: 30, label: '30 seg' },
+  { value: 45, label: '45 seg' },
+  { value: 60, label: '60 seg' },
+  { value: 0, label: 'Sem limite' },
+];
 
 interface PersistedHost {
   roomCode: string;
   phase: GamePhase;
   chapterIndex: number;
+  votingDurationSec: number;
+  votingEndsAt: number | null;
   players: Record<string, PlayerRecord>;
 }
 
@@ -53,7 +65,11 @@ function loadInitialHost(): PersistedHost {
     if (raw) {
       const parsed = JSON.parse(raw) as PersistedHost;
       if (parsed && parsed.roomCode && typeof parsed.chapterIndex === 'number') {
-        return parsed;
+        return {
+          ...parsed,
+          votingDurationSec: parsed.votingDurationSec ?? 45,
+          votingEndsAt: parsed.votingEndsAt ?? null,
+        };
       }
     }
   } catch {
@@ -63,6 +79,8 @@ function loadInitialHost(): PersistedHost {
     roomCode: generateRoomCode(),
     phase: 'LOBBY',
     chapterIndex: 0,
+    votingDurationSec: 45,
+    votingEndsAt: null,
     players: {},
   };
 }
@@ -72,12 +90,30 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
   const [roomCode, setRoomCode] = useState(initial.roomCode);
   const [phase, setPhase] = useState<GamePhase>(initial.phase);
   const [chapterIndex, setChapterIndex] = useState(initial.chapterIndex);
+  const [votingDurationSec, setVotingDurationSec] = useState(initial.votingDurationSec);
+  const [votingEndsAt, setVotingEndsAt] = useState<number | null>(initial.votingEndsAt);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [players, setPlayers] = useState<Record<string, PlayerRecord>>(initial.players);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
 
+  const confirmDialogRef = useRef<HTMLDialogElement | null>(null);
   const channelRef = useRef<HostChannel | null>(null);
-  const stateRef = useRef({ roomCode, phase, chapterIndex, players });
-  stateRef.current = { roomCode, phase, chapterIndex, players };
+  const stateRef = useRef({
+    roomCode,
+    phase,
+    chapterIndex,
+    votingDurationSec,
+    votingEndsAt,
+    players,
+  });
+  stateRef.current = {
+    roomCode,
+    phase,
+    chapterIndex,
+    votingDurationSec,
+    votingEndsAt,
+    players,
+  };
 
   const currentChapter = CHAPTERS[chapterIndex] ?? CHAPTERS[0];
   const playerList = useMemo(() => Object.values(players), [players]);
@@ -88,26 +124,40 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
       code: string,
       nextPhase: GamePhase,
       nextChapterIdx: number,
+      durationSec: number,
+      endsAt: number | null,
       nextPlayers: Record<string, PlayerRecord>,
     ): RoomStateMessage => {
       const ch = CHAPTERS[nextChapterIdx] ?? CHAPTERS[0];
       const publicChapter =
-        nextPhase === 'READING' || nextPhase === 'VOTING' || nextPhase === 'REVEAL'
+        nextPhase === 'READING' ||
+        nextPhase === 'VOTING' ||
+        nextPhase === 'REVEAL' ||
+        nextPhase === 'LEADERBOARD'
           ? sanitizeChapterForPlayer(ch)
           : null;
 
       let reveal: RevealPayload | null = null;
-      if (nextPhase === 'REVEAL') {
+      if (nextPhase === 'REVEAL' || nextPhase === 'LEADERBOARD') {
         const all = Object.values(nextPlayers);
-        const countA = all.filter((p) => p.rounds[ch.id]?.choice === 'A').length;
-        const countB = all.filter((p) => p.rounds[ch.id]?.choice === 'B').length;
+        const countFor = (k: ChoiceKey) =>
+          all.filter((p) => p.rounds[ch.id]?.choice === k).length;
+
         reveal = {
           chapterId: ch.id,
           catholicRef: ch.catholicRef,
-          countA,
-          countB,
-          optionAOutcome: ch.options[0].outcomeText,
-          optionBOutcome: ch.options[1].outcomeText,
+          counts: {
+            A: countFor('A'),
+            B: countFor('B'),
+            C: countFor('C'),
+            D: countFor('D'),
+          },
+          outcomes: {
+            A: ch.options[0].outcomeText,
+            B: ch.options[1].outcomeText,
+            C: ch.options[2].outcomeText,
+            D: ch.options[3].outcomeText,
+          },
         };
       }
 
@@ -116,6 +166,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
         const round = p.rounds[ch.id];
         playerStates[p.id] = {
           name: p.name,
+          avatar: p.avatar,
           score: p.score,
           lastChapterId: round?.chapterId,
           lastChoice: round?.choice,
@@ -130,7 +181,9 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
       const leaderboard = sortLeaderboard(Object.values(nextPlayers)).map((p) => ({
         id: p.id,
         name: p.name,
+        avatar: p.avatar,
         score: p.score,
+        lastDelta: p.rounds[ch.id]?.pointsDelta,
       }));
 
       return {
@@ -140,6 +193,8 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
         phase: nextPhase,
         chapterIndex: nextChapterIdx,
         totalChapters: CHAPTERS.length,
+        votingDurationSec: durationSec,
+        votingEndsAt: nextPhase === 'VOTING' ? endsAt : null,
         publicChapter,
         reveal,
         epilogueNarration:
@@ -157,17 +212,42 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
     try {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ roomCode, phase, chapterIndex, players }),
+        JSON.stringify({
+          roomCode,
+          phase,
+          chapterIndex,
+          votingDurationSec,
+          votingEndsAt,
+          players,
+        }),
       );
     } catch {
       // ignore storage errors
     }
-  }, [roomCode, phase, chapterIndex, players]);
+  }, [roomCode, phase, chapterIndex, votingDurationSec, votingEndsAt, players]);
 
   // Broadcast updated state whenever room state changes
   useEffect(() => {
-    channelRef.current?.publishState(buildSnapshot(roomCode, phase, chapterIndex, players));
-  }, [roomCode, phase, chapterIndex, players, buildSnapshot]);
+    channelRef.current?.publishState(
+      buildSnapshot(roomCode, phase, chapterIndex, votingDurationSec, votingEndsAt, players),
+    );
+  }, [roomCode, phase, chapterIndex, votingDurationSec, votingEndsAt, players, buildSnapshot]);
+
+  // Countdown tick during VOTING
+  useEffect(() => {
+    if (phase !== 'VOTING' || !votingEndsAt) {
+      setSecondsLeft(null);
+      return;
+    }
+
+    const updateTick = () => {
+      const remaining = Math.max(0, Math.ceil((votingEndsAt - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+    };
+    updateTick();
+    const id = window.setInterval(updateTick, 300);
+    return () => window.clearInterval(id);
+  }, [phase, votingEndsAt]);
 
   const handlePlayerMessage = useCallback((msg: PlayerToHostMessage) => {
     const snap = stateRef.current;
@@ -178,7 +258,11 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
         if (existing) {
           return {
             ...prev,
-            [msg.playerId]: { ...existing, name: msg.name.trim() || existing.name },
+            [msg.playerId]: {
+              ...existing,
+              name: msg.name.trim() || existing.name,
+              avatar: msg.avatar || existing.avatar,
+            },
           };
         }
         return {
@@ -186,6 +270,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
           [msg.playerId]: {
             id: msg.playerId,
             name: msg.name.trim() || 'Sentinela',
+            avatar: msg.avatar,
             score: 0,
             connectedAt: msg.joinedAt,
             rounds: {},
@@ -198,6 +283,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
     if (msg.type === 'SUBMIT_ACTION') {
       const ch = CHAPTERS[snap.chapterIndex];
       if (!ch || ch.id !== msg.chapterId || snap.phase !== 'VOTING') return;
+      if (snap.votingEndsAt && Date.now() > snap.votingEndsAt + 1200) return;
 
       setPlayers((prev) => {
         const player = prev[msg.playerId];
@@ -236,7 +322,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
         const player = prev[msg.playerId];
         if (!player || player.finalMemoryDie !== undefined) return prev;
         const epilogue = getEpilogue(player.score);
-        const dieBias = epilogue.id === 'shortcuts' ? 'world' : 'god';
+        const dieBias = epilogue.id === 'shortcuts' ? 'world' : 'god-bold';
         const dieValue = rollBiasedDie(dieBias);
         return {
           ...prev,
@@ -253,33 +339,76 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
     const ch = createHostChannel(roomCode, handlePlayerMessage, setStatus);
     channelRef.current = ch;
     const snap = stateRef.current;
-    ch.publishState(buildSnapshot(roomCode, snap.phase, snap.chapterIndex, snap.players));
+    ch.publishState(
+      buildSnapshot(
+        roomCode,
+        snap.phase,
+        snap.chapterIndex,
+        snap.votingDurationSec,
+        snap.votingEndsAt,
+        snap.players,
+      ),
+    );
     return () => {
       ch.close();
       channelRef.current = null;
     };
   }, [roomCode, handlePlayerMessage, buildSnapshot]);
 
+  // Listen to native dialog close event cleanly
+  useEffect(() => {
+    const dlg = confirmDialogRef.current;
+    if (!dlg) return;
+    const onClose = () => {
+      const action = dlg.returnValue;
+      dlg.returnValue = '';
+      if (action === 'confirm') {
+        setVotingEndsAt(null);
+        setPhase('REVEAL');
+      }
+    };
+    dlg.addEventListener('close', onClose);
+    return () => dlg.removeEventListener('close', onClose);
+  }, []);
+
   const joinUrl =
     typeof window !== 'undefined' ? `${window.location.origin}/jogar?sala=${roomCode}` : '';
 
-  const votedCount = playerList.filter((p) => Boolean(p.rounds[currentChapter.id])).length;
+  const missingPlayers = playerList.filter((p) => !p.rounds[currentChapter.id]);
+  const votedCount = playerList.length - missingPlayers.length;
   const memoryRolledCount = playerList.filter((p) => p.finalMemoryDie !== undefined).length;
 
   const countChoice = (choice: ChoiceKey) =>
     playerList.filter((p) => p.rounds[currentChapter.id]?.choice === choice).length;
+
+  function openVotingPhase() {
+    const endsAt = votingDurationSec > 0 ? Date.now() + votingDurationSec * 1000 : null;
+    setVotingEndsAt(endsAt);
+    setPhase('VOTING');
+  }
+
+  function requestReveal() {
+    if (missingPlayers.length > 0 && confirmDialogRef.current) {
+      confirmDialogRef.current.showModal();
+      return;
+    }
+    setVotingEndsAt(null);
+    setPhase('REVEAL');
+  }
 
   function startNewRoom() {
     const nextCode = generateRoomCode();
     setRoomCode(nextCode);
     setPhase('LOBBY');
     setChapterIndex(0);
+    setVotingEndsAt(null);
     setPlayers({});
   }
 
   function resetCurrentGame() {
     setPhase('LOBBY');
     setChapterIndex(0);
+    setVotingEndsAt(null);
     setPlayers((prev) => {
       const reset: Record<string, PlayerRecord> = {};
       for (const p of Object.values(prev)) {
@@ -289,11 +418,13 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
     });
   }
 
+  const isGodOption = (kind: string) => kind === 'god' || kind === 'god-bold';
+
   return (
     <div className="host-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-badge">RPG Cataguases</span>
+          <span className="brand-badge">Paróquia N. Sra. do Rosário</span>
           <h1>As Pontes do Rio Pomba</h1>
         </div>
 
@@ -331,7 +462,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
               <p className="eyebrow">Entre pelo celular</p>
               <h2>Escaneie o QR Code</h2>
               <div className="qr-frame">
-                <QRCodeSVG value={joinUrl || roomCode} size={220} includeMargin />
+                <QRCodeSVG value={joinUrl || roomCode} size={210} includeMargin />
               </div>
               <div className="pin-hero">
                 <span>PIN da Sala</span>
@@ -356,25 +487,44 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
               <div className="roster-header">
                 <div>
                   <p className="eyebrow">Grupo conectado</p>
-                  <h2>Personagens em Cataguases ({playerList.length})</h2>
+                  <h2>Personagens ({playerList.length})</h2>
                 </div>
                 <button type="button" className="btn-ghost" onClick={startNewRoom}>
                   Novo PIN
                 </button>
               </div>
 
+              <div className="timer-config-box">
+                <span className="timer-config-label">
+                  <Clock size={16} /> Tempo limite por pergunta:
+                </span>
+                <div className="chip-row">
+                  {TIMER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`mini-chip ${votingDurationSec === opt.value ? 'is-active' : ''}`}
+                      onClick={() => setVotingDurationSec(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {playerList.length === 0 ? (
                 <div className="empty-roster">
-                  <p>Aguardando os jovens escanearem o QR Code e batizarem seus personagens...</p>
+                  <p>Aguardando os jovens escanearem o QR Code e montarem seus personagens...</p>
                   <p className="muted">
-                    Quem estiver sem celular pode entrar em dupla no celular ao lado.
+                    Quem estiver sem celular pode jogar em dupla no celular ao lado.
                   </p>
                 </div>
               ) : (
                 <ul className="player-chips">
                   {playerList.map((p) => (
-                    <li key={p.id} className="player-chip">
-                      {p.name}
+                    <li key={p.id} className="player-chip-avatar">
+                      <AvatarView config={p.avatar} name={p.name} size={36} />
+                      <span>{p.name}</span>
                     </li>
                   ))}
                 </ul>
@@ -414,22 +564,42 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
 
               {phase === 'READING' && (
                 <div className="stage-controls">
-                  <button
-                    type="button"
-                    className="btn-primary btn-lg"
-                    onClick={() => setPhase('VOTING')}
-                  >
-                    <Dices size={20} /> Liberar Escolhas e Dado no Celular
+                  <button type="button" className="btn-primary btn-lg" onClick={openVotingPhase}>
+                    <Dices size={20} /> Liberar 4 Escolhas e Dado no Celular
                   </button>
                 </div>
               )}
 
               {phase === 'VOTING' && (
                 <div className="voting-section">
+                  {secondsLeft !== null && (
+                    <div className={`countdown-banner ${secondsLeft === 0 ? 'is-expired' : ''}`}>
+                      <div className="countdown-row">
+                        <span>
+                          <Clock size={18} />{' '}
+                          {secondsLeft > 0 ? 'Tempo restante:' : 'Tempo esgotado!'}
+                        </span>
+                        <strong>{secondsLeft}s</strong>
+                      </div>
+                      <div className="vote-track">
+                        <div
+                          className="vote-fill is-timer"
+                          style={{
+                            width: `${
+                              votingDurationSec > 0
+                                ? Math.round((secondsLeft / votingDurationSec) * 100)
+                                : 0
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="options-preview">
                     {currentChapter.options.map((opt) => (
                       <div key={opt.key} className="option-preview-card">
-                        <span className="option-badge">{opt.key}</span>
+                        <span className={`option-badge badge-${opt.key.toLowerCase()}`}>{opt.key}</span>
                         <p>{opt.label}</p>
                       </div>
                     ))}
@@ -457,11 +627,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
                   </div>
 
                   <div className="stage-controls">
-                    <button
-                      type="button"
-                      className="btn-primary btn-lg"
-                      onClick={() => setPhase('REVEAL')}
-                    >
+                    <button type="button" className="btn-primary btn-lg" onClick={requestReveal}>
                       <CheckCircle2 size={20} /> Revelar Desfechos
                     </button>
                   </div>
@@ -474,10 +640,10 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
                     {currentChapter.options.map((opt) => (
                       <div
                         key={opt.key}
-                        className={`reveal-card ${opt.kind === 'god' ? 'is-god' : 'is-world'}`}
+                        className={`reveal-card ${isGodOption(opt.kind) ? 'is-god' : 'is-world'}`}
                       >
                         <div className="reveal-card-top">
-                          <span className="option-badge">{opt.key}</span>
+                          <span className={`option-badge badge-${opt.key.toLowerCase()}`}>{opt.key}</span>
                           <span className="vote-count-pill">
                             {countChoice(opt.key)} jovem(ns)
                           </span>
@@ -494,29 +660,85 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
                   </div>
 
                   <div className="stage-controls">
-                    {chapterIndex < CHAPTERS.length - 1 ? (
-                      <button
-                        type="button"
-                        className="btn-primary btn-lg"
-                        onClick={() => {
-                          setChapterIndex((i) => i + 1);
-                          setPhase('READING');
-                        }}
-                      >
-                        Próximo Capítulo ({chapterIndex + 2} / {CHAPTERS.length}) →
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-primary btn-lg"
-                        onClick={() => setPhase('EPILOGUE')}
-                      >
-                        Ir para o Epílogo às Margens do Rio Pomba →
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="btn-primary btn-lg"
+                      onClick={() => setPhase('LEADERBOARD')}
+                    >
+                      <Trophy size={20} /> Ver Placar da Rodada →
+                    </button>
                   </div>
                 </div>
               )}
+            </article>
+          </section>
+        )}
+
+        {phase === 'LEADERBOARD' && (
+          <section className="chapter-stage">
+            <div className="chapter-header">
+              <span className="act-tag">Placar após o Capítulo {currentChapter.id}</span>
+              <span className="progress-tag">
+                {currentChapter.id} / {CHAPTERS.length}
+              </span>
+            </div>
+
+            <article className="card podium-card">
+              <h2>Classificação Parcial</h2>
+
+              {sortedPlayers.length > 0 ? (
+                <div className="podium-list">
+                  {sortedPlayers.map((p, idx) => {
+                    const round = p.rounds[currentChapter.id];
+                    const delta = round?.pointsDelta ?? 0;
+                    return (
+                      <div key={p.id} className={`podium-row rank-${idx + 1}`}>
+                        <span className="rank-num">#{idx + 1}</span>
+                        <AvatarView config={p.avatar} name={p.name} size={44} />
+                        <div className="rank-info">
+                          <strong>{p.name}</strong>
+                          <small>
+                            {round
+                              ? `Escolheu ${round.choice} • Dado ${round.dieValue}`
+                              : 'Não respondeu a tempo'}
+                          </small>
+                        </div>
+                        {round && (
+                          <span className={`delta-chip ${delta >= 0 ? 'is-positive' : 'is-negative'}`}>
+                            {delta >= 0 ? `+${delta}` : delta}
+                          </span>
+                        )}
+                        <span className="rank-score">{p.score} pts</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="muted">Nenhum jogador conectado ainda.</p>
+              )}
+
+              <div className="stage-controls">
+                {chapterIndex < CHAPTERS.length - 1 ? (
+                  <button
+                    type="button"
+                    className="btn-primary btn-lg"
+                    onClick={() => {
+                      setChapterIndex((i) => i + 1);
+                      setPhase('READING');
+                    }}
+                  >
+                    Próximo Capítulo ({chapterIndex + 2} / {CHAPTERS.length}) →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary btn-lg"
+                    onClick={() => setPhase('EPILOGUE')}
+                  >
+                    Ir para o Epílogo às Margens do Rio Pomba →
+                  </button>
+                )}
+              </div>
             </article>
           </section>
         )}
@@ -580,6 +802,7 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
                     return (
                       <div key={p.id} className={`podium-row rank-${idx + 1}`}>
                         <span className="rank-num">#{idx + 1}</span>
+                        <AvatarView config={p.avatar} name={p.name} size={46} />
                         <div className="rank-info">
                           <strong>{p.name}</strong>
                           <small>
@@ -612,13 +835,13 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
                   Qual dessas 16 cenas está acontecendo na sua vida hoje aqui em Cataguases?
                 </li>
               </ol>
-              <p className="catholic-ref-banner">
+              <div className="catholic-ref-banner">
                 <Sparkles size={18} />
                 <span>
-                  Oração final: Mt 6,33 • Intercessão de Santa Rita de Cássia, São Carlo Acutis e
-                  São Pier Giorgio Frassati.
+                  Oração final: Mt 6,33 • Sob a proteção de Nossa Senhora do Rosário, São Carlo
+                  Acutis e São Pier Giorgio Frassati.
                 </span>
-              </p>
+              </div>
 
               <div className="stage-controls">
                 <button type="button" className="btn-primary" onClick={resetCurrentGame}>
@@ -629,6 +852,31 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
           </section>
         )}
       </main>
+
+      <dialog ref={confirmDialogRef} className="confirm-dialog" aria-labelledby="confirm-reveal-title">
+        <div className="confirm-dialog-body">
+          <div className="confirm-dialog-header">
+            <AlertTriangle size={24} className="confirm-icon" />
+            <h2 id="confirm-reveal-title">Ainda há jovens sem responder</h2>
+          </div>
+          <p className="muted">
+            Faltam <strong>{missingPlayers.length}</strong> pessoa(s) escolher e rolar o dado:{' '}
+            {missingPlayers
+              .slice(0, 5)
+              .map((p) => p.name)
+              .join(', ')}
+            {missingPlayers.length > 5 ? ` e mais ${missingPlayers.length - 5}` : ''}.
+          </p>
+          <form method="dialog" className="confirm-dialog-actions">
+            <button type="submit" value="cancel" className="btn-secondary" autoFocus>
+              Esperar mais
+            </button>
+            <button type="submit" value="confirm" className="btn-primary">
+              Sim, revelar agora
+            </button>
+          </form>
+        </div>
+      </dialog>
     </div>
   );
 }

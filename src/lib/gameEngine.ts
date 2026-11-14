@@ -8,6 +8,7 @@ import {
   type PublicChapter,
   type StoryOption,
 } from '../data/story';
+import type { AvatarConfig } from './avatar';
 
 export interface PlayerRoundRecord {
   chapterId: number;
@@ -20,6 +21,7 @@ export interface PlayerRoundRecord {
 export interface PlayerRecord {
   id: string;
   name: string;
+  avatar: AvatarConfig;
   score: number;
   connectedAt: number;
   rounds: Record<number, PlayerRoundRecord>;
@@ -28,8 +30,10 @@ export interface PlayerRecord {
 
 /**
  * Rola um d6 viciado conforme o caminho escolhido:
- * - world: 50% -> 1, 35% -> 2, 15% -> 3 (nunca 4..6)
- * - god:   10% -> 3, 30% -> 4, 35% -> 5, 25% -> 6 (nunca 1..2)
+ * - world:      50% -> 1, 35% -> 2, 15% -> 3 (nunca 4..6)
+ * - world-mild: 25% -> 1, 45% -> 2, 30% -> 3 (nunca 4..6)
+ * - god:        15% -> 3, 40% -> 4, 30% -> 5, 15% -> 6 (nunca 1..2)
+ * - god-bold:   5% -> 3, 25% -> 4, 35% -> 5, 35% -> 6 (nunca 1..2)
  */
 export function rollBiasedDie(kind: OptionKind, rng: () => number = Math.random): number {
   const r = Math.min(Math.max(rng(), 0), 0.999999);
@@ -38,19 +42,28 @@ export function rollBiasedDie(kind: OptionKind, rng: () => number = Math.random)
     if (r < 0.85) return 2;
     return 3;
   }
-  if (r < 0.1) return 3;
-  if (r < 0.4) return 4;
-  if (r < 0.75) return 5;
+  if (kind === 'world-mild') {
+    if (r < 0.25) return 1;
+    if (r < 0.7) return 2;
+    return 3;
+  }
+  if (kind === 'god') {
+    if (r < 0.15) return 3;
+    if (r < 0.55) return 4;
+    if (r < 0.85) return 5;
+    return 6;
+  }
+  if (r < 0.05) return 3;
+  if (r < 0.3) return 4;
+  if (r < 0.65) return 5;
   return 6;
 }
 
 /**
- * Calcula a variação de pontos da rodada combinando o desfecho da escolha com o dado:
- * - Caminho de Deus: base positiva + bônus pelo valor alto do dado (ex.: dado 6 -> +12 extras).
- * - Caminho do Mundo: base negativa (custo oculto) agravada por dados baixos (1 ou 2).
+ * Calcula a variação de pontos da rodada combinando o desfecho da escolha com o dado.
  */
 export function calculateRoundPoints(option: StoryOption, dieValue: number): number {
-  if (option.kind === 'god') {
+  if (option.kind === 'god' || option.kind === 'god-bold') {
     return option.basePoints + dieValue * 2;
   }
   const penalty = (4 - dieValue) * 3;
@@ -70,6 +83,8 @@ export function sanitizeChapterForPlayer(chapter: Chapter): PublicChapter {
     options: [
       { key: chapter.options[0].key, label: chapter.options[0].label },
       { key: chapter.options[1].key, label: chapter.options[1].label },
+      { key: chapter.options[2].key, label: chapter.options[2].label },
+      { key: chapter.options[3].key, label: chapter.options[3].label },
     ],
   };
 }
@@ -80,7 +95,7 @@ export function getChapterById(id: number): Chapter | undefined {
 
 export function getEpilogue(totalScore: number): EpilogueTier {
   if (totalScore >= 260) return EPILOGUE_TIERS.rock;
-  if (totalScore >= 80) return EPILOGUE_TIERS.divided;
+  if (totalScore >= 60) return EPILOGUE_TIERS.divided;
   return EPILOGUE_TIERS.shortcuts;
 }
 

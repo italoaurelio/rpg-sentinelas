@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { Award, Dices, Sparkles, Wifi, WifiOff } from 'lucide-react';
+import { Award, Clock, Dices, Sparkles, Trophy, Wifi, WifiOff } from 'lucide-react';
 import { EPILOGUE_TIERS, type ChoiceKey } from '../data/story';
+import { randomAvatarConfig, type AvatarConfig } from '../lib/avatar';
 import {
   createPlayerChannel,
   makeMsgId,
@@ -8,6 +9,8 @@ import {
   type PlayerChannel,
   type RoomStateMessage,
 } from '../lib/realtime';
+import { AvatarBuilder } from './AvatarBuilder';
+import { AvatarView } from './AvatarView';
 import { Dice3D } from './Dice3D';
 
 interface PlayerViewProps {
@@ -28,6 +31,16 @@ function getOrCreatePlayerId(): string {
   }
 }
 
+function loadSavedAvatar(): AvatarConfig {
+  try {
+    const raw = sessionStorage.getItem('sentinelas_player_avatar_v1');
+    if (raw) return JSON.parse(raw) as AvatarConfig;
+  } catch {
+    // ignore
+  }
+  return randomAvatarConfig();
+}
+
 export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps) {
   const playerId = useMemo(() => getOrCreatePlayerId(), []);
   const [roomInput, setRoomInput] = useState(initialRoomCode);
@@ -38,10 +51,12 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
       return '';
     }
   });
+  const [avatarConfig, setAvatarConfig] = useState<AvatarConfig>(() => loadSavedAvatar());
   const [activeRoom, setActiveRoom] = useState(initialRoomCode ? initialRoomCode : '');
   const [joinedName, setJoinedName] = useState('');
   const [roomState, setRoomState] = useState<RoomStateMessage | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   const [selectedChoice, setSelectedChoice] = useState<ChoiceKey | null>(null);
   const [rollingChapterId, setRollingChapterId] = useState<number | null>(null);
@@ -50,13 +65,14 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
   const channelRef = useRef<PlayerChannel | null>(null);
 
   const connectAndJoin = useCallback(
-    (code: string, charName: string) => {
+    (code: string, charName: string, avatar: AvatarConfig) => {
       const cleanCode = code.trim();
       const cleanName = charName.trim();
       if (!cleanCode || !cleanName) return;
 
       try {
         sessionStorage.setItem('sentinelas_player_name_v1', cleanName);
+        sessionStorage.setItem('sentinelas_player_avatar_v1', JSON.stringify(avatar));
       } catch {
         // ignore
       }
@@ -67,7 +83,6 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
     [],
   );
 
-  // Auto-join only if both room code and previous session name exist? No — let youth confirm name first!
   useEffect(() => {
     if (!activeRoom || !joinedName) return;
 
@@ -80,6 +95,7 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
         msgId: makeMsgId(),
         playerId,
         name: joinedName,
+        avatar: avatarConfig,
         joinedAt: Date.now(),
       });
 
@@ -91,19 +107,17 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
       ch.close();
       channelRef.current = null;
     };
-  }, [activeRoom, joinedName, playerId]);
+  }, [activeRoom, joinedName, playerId, avatarConfig]);
 
   const myState = roomState?.playerStates[playerId];
   const currentChapter = roomState?.publicChapter ?? null;
   const currentChapterId = currentChapter?.id ?? null;
 
-  // Reset local choice state when moving to a new chapter
   useEffect(() => {
     setSelectedChoice(null);
     setRollingChapterId(null);
   }, [currentChapterId]);
 
-  // Stop rolling animation once Host sends back our die result
   useEffect(() => {
     if (
       currentChapterId &&
@@ -122,9 +136,22 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
     }
   }, [myState?.finalMemoryDie]);
 
+  // Countdown tick synced with roomState.votingEndsAt
+  useEffect(() => {
+    if (roomState?.phase !== 'VOTING' || !roomState.votingEndsAt) {
+      setSecondsLeft(null);
+      return;
+    }
+    const endsAt = roomState.votingEndsAt;
+    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
+    tick();
+    const id = window.setInterval(tick, 300);
+    return () => window.clearInterval(id);
+  }, [roomState?.phase, roomState?.votingEndsAt]);
+
   function handleJoinSubmit(e: FormEvent) {
     e.preventDefault();
-    connectAndJoin(roomInput, nameInput);
+    connectAndJoin(roomInput, nameInput, avatarConfig);
   }
 
   function handleRollForChapter() {
@@ -152,13 +179,19 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
     return (
       <main className="player-shell">
         <section className="card join-card">
-          <span className="brand-badge">RPG Cataguases</span>
-          <h1>As Pontes do Rio Pomba</h1>
+          <span className="brand-badge">Paróquia N. Sra. do Rosário</span>
+          <h1>Monte seu Personagem</h1>
           <p className="muted">
-            Digite o PIN da sala e dê um nome para o seu personagem viver essa história.
+            Personalize seu visual, dê um nome e entre com o PIN exibido no telão.
           </p>
 
           <form onSubmit={handleJoinSubmit} className="join-form">
+            <AvatarBuilder
+              value={avatarConfig}
+              onChange={setAvatarConfig}
+              previewName={nameInput}
+            />
+
             <label className="field">
               <span>PIN da Sala</span>
               <input
@@ -201,6 +234,7 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
   const hasRolledThisChapter = Boolean(
     currentChapter && myState?.lastChapterId === currentChapter.id && myState.lastDieValue,
   );
+  const timeExpired = secondsLeft === 0;
   const myRank = roomState
     ? roomState.leaderboard.findIndex((item) => item.id === playerId) + 1
     : 0;
@@ -208,9 +242,12 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
   return (
     <div className="player-shell">
       <header className="player-topbar">
-        <div className="player-identity">
-          <strong>{joinedName}</strong>
-          <small>Sala {activeRoom}</small>
+        <div className="player-identity-row">
+          <AvatarView config={avatarConfig} name={joinedName} size={40} />
+          <div className="player-identity">
+            <strong>{joinedName}</strong>
+            <small>Sala {activeRoom}</small>
+          </div>
         </div>
 
         <div className="player-score-group">
@@ -231,8 +268,9 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
 
         {roomState && phase === 'LOBBY' && (
           <section className="card player-card centered">
+            <AvatarView config={avatarConfig} name={joinedName} size={88} />
             <span className="brand-badge">Personagem pronto</span>
-            <h2>{joinedName} entrou em Cataguases!</h2>
+            <h2>{joinedName} chegou em Cataguases!</h2>
             <p className="muted">
               Olhe para o telão e aguarde o Mestre iniciar o Capítulo 1.
             </p>
@@ -252,50 +290,73 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
         {roomState && phase === 'VOTING' && currentChapter && (
           <section className="card player-card">
             <div className="player-chapter-mini">
-              <span>Cap. {currentChapter.id}</span>
-              <strong>{currentChapter.title}</strong>
+              <div>
+                <span>Cap. {currentChapter.id}</span>
+                <strong>{currentChapter.title}</strong>
+              </div>
+              {secondsLeft !== null && (
+                <span className={`player-timer-pill ${timeExpired ? 'is-expired' : ''}`}>
+                  <Clock size={14} /> {secondsLeft}s
+                </span>
+              )}
             </div>
 
             {!hasRolledThisChapter ? (
-              <>
-                <p className="prompt-label">1. Escolha o caminho do seu personagem:</p>
-                <div className="choice-stack">
-                  {currentChapter.options.map((opt) => (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      className={`choice-btn ${selectedChoice === opt.key ? 'is-selected' : ''}`}
-                      onClick={() => setSelectedChoice(opt.key)}
-                      disabled={rollingChapterId === currentChapter.id}
-                    >
-                      <span className="option-badge">{opt.key}</span>
-                      <span>{opt.label}</span>
-                    </button>
-                  ))}
+              timeExpired ? (
+                <div className="dice-action-box centered">
+                  <h2>Tempo esgotado!</h2>
+                  <p className="muted">Aguarde o Mestre revelar os desfechos desta cena.</p>
                 </div>
-
-                {selectedChoice && (
-                  <div className="dice-action-box">
-                    <p className="prompt-label">2. Agora jogue o dado para agir!</p>
-                    <Dice3D
-                      value={myState?.lastChapterId === currentChapter.id ? myState.lastDieValue ?? null : null}
-                      rolling={rollingChapterId === currentChapter.id}
-                    />
-                    <button
-                      type="button"
-                      className="btn-primary btn-lg"
-                      onClick={handleRollForChapter}
-                      disabled={rollingChapterId === currentChapter.id}
-                    >
-                      <Dices size={20} />
-                      {rollingChapterId === currentChapter.id ? 'Rolando...' : 'Jogar Dado!'}
-                    </button>
+              ) : (
+                <>
+                  <p className="prompt-label">1. Escolha o caminho do seu personagem:</p>
+                  <div className="choice-stack">
+                    {currentChapter.options.map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`choice-btn ${selectedChoice === opt.key ? 'is-selected' : ''}`}
+                        onClick={() => setSelectedChoice(opt.key)}
+                        disabled={rollingChapterId === currentChapter.id}
+                      >
+                        <span className={`option-badge badge-${opt.key.toLowerCase()}`}>
+                          {opt.key}
+                        </span>
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
                   </div>
-                )}
-              </>
+
+                  {selectedChoice && (
+                    <div className="dice-action-box">
+                      <p className="prompt-label">2. Agora jogue o dado para agir!</p>
+                      <Dice3D
+                        value={
+                          myState?.lastChapterId === currentChapter.id
+                            ? myState.lastDieValue ?? null
+                            : null
+                        }
+                        rolling={rollingChapterId === currentChapter.id}
+                      />
+                      <button
+                        type="button"
+                        className="btn-primary btn-lg"
+                        onClick={handleRollForChapter}
+                        disabled={rollingChapterId === currentChapter.id}
+                      >
+                        <Dices size={20} />
+                        {rollingChapterId === currentChapter.id ? 'Rolando...' : 'Jogar Dado!'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
             ) : (
               <div className="dice-action-box centered">
-                <Dice3D value={myState?.lastDieValue ?? 1} rolling={rollingChapterId === currentChapter.id} />
+                <Dice3D
+                  value={myState?.lastDieValue ?? 1}
+                  rolling={rollingChapterId === currentChapter.id}
+                />
                 <h2>Você tirou {myState?.lastDieValue}!</h2>
                 <p className="muted">
                   Escolha <strong>{myState?.lastChoice}</strong> registrada. Aguarde o Mestre
@@ -324,15 +385,13 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
                   Você escolheu {myState.lastChoice} (Dado: {myState.lastDieValue})
                 </h2>
                 <p className="outcome-copy">
-                  {myState.lastChoice === 'A'
-                    ? roomState.reveal.optionAOutcome
-                    : roomState.reveal.optionBOutcome}
+                  {roomState.reveal.outcomes[myState.lastChoice]}
                 </p>
               </>
             ) : (
               <>
                 <h2>Tempo encerrado neste capítulo</h2>
-                <p className="muted">Acompanhe o desfecho no telão para o próximo capítulo.</p>
+                <p className="muted">Acompanhe o desfecho no telão para a próxima rodada.</p>
               </>
             )}
 
@@ -340,6 +399,31 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
               <Sparkles size={15} />
               <span>{roomState.reveal.catholicRef}</span>
             </div>
+          </section>
+        )}
+
+        {roomState && phase === 'LEADERBOARD' && (
+          <section className="card player-card centered">
+            <Trophy size={36} className="podium-icon" />
+            <AvatarView config={avatarConfig} name={joinedName} size={76} />
+            <span className="act-tag">Placar da Rodada</span>
+            <h2>
+              {myRank > 0 ? `${myRank}º lugar` : 'No placar'} de {roomState.leaderboard.length}
+            </h2>
+            <span className="score-hero">{myState?.score ?? 0} pontos</span>
+            {myState?.lastChapterId === currentChapterId && myState.lastPointsDelta !== undefined && (
+              <span
+                className={`delta-badge ${
+                  myState.lastPointsDelta >= 0 ? 'is-positive' : 'is-negative'
+                }`}
+              >
+                Última rodada:{' '}
+                {myState.lastPointsDelta >= 0
+                  ? `+${myState.lastPointsDelta} pts`
+                  : `${myState.lastPointsDelta} pts`}
+              </span>
+            )}
+            <p className="muted">Prepare-se para o próximo capítulo!</p>
           </section>
         )}
 
@@ -379,6 +463,7 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
         {roomState && phase === 'PODIUM' && (
           <section className="card player-card centered">
             <Award size={40} className="podium-icon" />
+            <AvatarView config={avatarConfig} name={joinedName} size={80} />
             <span className="act-tag">Fim da Jornada</span>
             <h2>
               {myRank > 0 ? `${myRank}º lugar` : 'Jornada concluída'} • {myState?.score ?? 0} pts
