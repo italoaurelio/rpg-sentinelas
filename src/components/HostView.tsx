@@ -424,8 +424,19 @@ export function HostView({ onSwitchToPlayer }: HostViewProps) {
     <div className="host-shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-badge">Paróquia N. Sra. do Rosário</span>
-          <h1>As Pontes do Rio Pomba</h1>
+          <div className="logo-crest">
+            <img
+              src="/sentinelas-logo.png"
+              alt="Logo Sentinelas"
+              width={903}
+              height={1024}
+              className="sentinelas-logo-sm"
+            />
+          </div>
+          <div className="brand-titles">
+            <span className="brand-badge">Sentinelas • Paróquia N. Sra. do Rosário</span>
+            <h1>Por amor, por querer, a decisão de se doar</h1>
+          </div>
         </div>
 
         <div className="topbar-meta">

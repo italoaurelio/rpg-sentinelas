@@ -179,10 +179,21 @@ export function PlayerView({ initialRoomCode, onSwitchToHost }: PlayerViewProps)
     return (
       <main className="player-shell">
         <section className="card join-card">
-          <span className="brand-badge">Paróquia N. Sra. do Rosário</span>
-          <h1>Monte seu Personagem</h1>
+          <div className="player-hero-crest">
+            <img
+              src="/sentinelas-logo.png"
+              alt="Logo Sentinelas"
+              width={903}
+              height={1024}
+              className="sentinelas-logo-lg"
+            />
+            <div className="player-hero-copy">
+              <span className="hero-eyebrow">Grupo de Jovens • N. Sra. do Rosário</span>
+              <h1>Por amor, por querer, a decisão de se doar</h1>
+            </div>
+          </div>
           <p className="muted">
-            Personalize seu visual, dê um nome e entre com o PIN exibido no telão.
+            Personalize seu personagem, dê um nome e entre com o PIN exibido no telão.
           </p>
 
           <form onSubmit={handleJoinSubmit} className="join-form">
